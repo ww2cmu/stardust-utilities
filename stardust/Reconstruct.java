@@ -1,3 +1,5 @@
+package stardust;
+
 import java.util.*;
 import java.io.*;
 import java.nio.*;
@@ -169,7 +171,7 @@ public class Reconstruct {
     return g;
   }
 
-  private static void calculateTotalTime(Graph g) {
+  public static void calculateTotalTime(Graph g) {
      double start = g.root.timestamp;
      Node n = g.root;
      while(n.children.size() > 0)
@@ -177,7 +179,7 @@ public class Reconstruct {
      g.totalTime = (n.timestamp - start) / 1000;
   }
 
-  private static class Graph {
+  public static class Graph {
     HashMap<String, Node> nodes;
     Node root;
     double totalTime;
@@ -260,7 +262,7 @@ public class Reconstruct {
     return nexts;
   }
 
-  private static void calculateLatencies(HashMap<String, Node> nodes, Node n) {
+  public static void calculateLatencies(HashMap<String, Node> nodes, Node n) {
     if (n.visited)
       return;
     n.visited = true;
@@ -283,7 +285,7 @@ public class Reconstruct {
     }
   }
 
-  private static class Node implements Comparable<Node>{
+  public static class Node implements Comparable<Node>{
     String id;
     String agent;
     String label;
@@ -327,7 +329,7 @@ public class Reconstruct {
 
   }
 
-  private static class Edge {
+  public static class Edge {
     String from, to;
     double latency;
 
