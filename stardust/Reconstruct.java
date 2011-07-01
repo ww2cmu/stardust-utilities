@@ -40,18 +40,43 @@ public class Reconstruct {
   }*/
 
   public static boolean validateGraph(Graph g) {
+    if (g.root.label.indexOf("START") == -1 && g.root.label.indexOf("NEW_BLOCK") == -1) {
+      System.out.println("Error: root node has label " + g.root.label);
+      return false;
+    }
     int dfsN = countNodes(g, g.root, new HashSet<Node>());
     int dfsE = countEdges(g, g.root, new HashSet<Node>());
     int hashN = 0;
     int hashE = 0;
+    Node last = null;
     for(Node n : g.nodes.values())
       hashN++;
-    for(Node n : g.nodes.values())
+    for(Node n : g.nodes.values()) {
       for(Edge e : n.children)
         hashE++;
-    if (dfsN == hashN && dfsE == hashE)
-      return true;
-    return false;
+      if (n.children.size() == 0) {
+        if (last != null) {
+          System.out.println("Multiple last nodes: " + last.label + " and " + n.label);
+          return false;
+        }
+        last = n;
+      }
+    }
+    if (dfsN != hashN || dfsE != hashE) {
+      System.out.println("dfsN = " + dfsN + " hashN = " + hashN + " dfsE = " + dfsE + " hashE = " + hashE);
+      return false;
+    }
+    int index = g.root.label.indexOf("START");
+    if (index != -1) {
+      if (last.label.indexOf(g.root.label.substring(0, index)) == -1 || (last.label.indexOf("END") == -1 && last.label.indexOf("ERROR") == -1))  {
+        System.out.println("Error: last node has label " + g.root.label);
+        return false;
+      }
+    } else if (g.root.label.indexOf("NEW_BLOCK") != -1 && last.label.indexOf("END_BLOCK") == -1) {
+      System.out.println("Error: last node has label " + g.root.label);
+      return false;
+    }
+    return true;
   }
 
   public static Graph reconstruct(InputStream in) throws IOException {
@@ -59,7 +84,7 @@ public class Reconstruct {
     Random r = new Random();
     Graph g = new Graph();
     HashMap<String, ArrayList<Node>> nodes = new HashMap<String, ArrayList<Node>>();
-    HashMap<String, String> adjList = new HashMap<String, String>();
+    HashMap<String, ArrayList<String>> adjList = new HashMap<String, ArrayList<String>>();
     HashSet<String> idList = new HashSet<String>();
     //ArrayList<Edge> edges = new ArrayList<Edge>(); 
     while(sc.hasNextLine()) {
@@ -124,7 +149,10 @@ public class Reconstruct {
                 g.nodes.put(pid, new Node(pid));
               g.nodes.get(pid).children.add(new Edge(pid, n.id));
             }*/
-            adjList.put(pid, n.id);
+            if (!adjList.containsKey(pid)) {
+              adjList.put(pid, new ArrayList<String>());
+            }
+            adjList.get(pid).add(n.id);
           }
         }
         if (i != 15) {
@@ -136,7 +164,7 @@ public class Reconstruct {
         nodes.get(n.id).add(n);
       } 
       else {
-        throw new IOException("Trace report is invalid");
+        throw new IOException("Trace report is invalid, first line is: " + line );
       }
     }
     //if (g.root == null)
@@ -154,15 +182,20 @@ public class Reconstruct {
         g.nodes.put(a.get(i).id, a.get(i));
       }
     }
-    for(Map.Entry<String, String> entry : adjList.entrySet()) {
+    for(Map.Entry<String, ArrayList<String>> entry : adjList.entrySet()) {
       ArrayList<Node> from = nodes.get(entry.getKey());
-      ArrayList<Node> to = nodes.get(entry.getValue());
-      idList.remove(entry.getValue());
       if (from.size() <= 0)
         continue;
-      from.get(from.size() - 1).children.add(new Edge(from.get(from.size()-1).id, to.get(0).id));
+      for (String s : entry.getValue()) {
+        ArrayList<Node> to = nodes.get(s);
+        idList.remove(s);
+        from.get(from.size() - 1).children.add(new Edge(from.get(from.size()-1).id, to.get(0).id));
+      }
     }
     if (idList.size() != 1) {
+      System.out.println("Too many ids");
+      for (String s : idList)
+        System.out.println(s);
       throw new IOException("Invalid graph");
     }
     g.root = nodes.get(idList.iterator().next()).get(0);

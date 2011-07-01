@@ -16,6 +16,6 @@ then
     fi
     z=$(($z+1))
   done
-  print "Total number: $z\n"
-  print "Malformed: $y\n"
+  printf "Total number: $z\n"
+  printf "Malformed: $y\n"
 fi
