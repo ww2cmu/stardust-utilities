@@ -28,17 +28,6 @@ public class Reconstruct {
       System.exit(1);
   }
 
-  /*public static boolean validateGraph(Graph g) {
-    if (g.root.label.indexOf("NEW_BLOCK") == -1 && g.root.label.indexOf("_START") == -1)
-      return false;
-    Node end = g.root;
-    while(end.children.size() > 0)
-      end = g.nodes.get(end.children.getFirst().to);
-    if (end.label.indexOf("END_BLOCK") == -1 && end.label.indexOf("_END") == -1)
-      return false;
-    return true;
-  }*/
-
   public static boolean validateGraph(Graph g) {
     if (g.root.label.indexOf("START") == -1 && g.root.label.indexOf("NEW_BLOCK") == -1) {
       System.out.println("Error: root node has label " + g.root.label);
@@ -56,7 +45,6 @@ public class Reconstruct {
         hashE++;
       if (n.children.size() == 0) {
         if (last != null) {
-          System.out.println("Multiple last nodes: " + last.label + " and " + n.label);
           return false;
         }
         last = n;
@@ -140,7 +128,7 @@ public class Reconstruct {
               parent[j >> 1] = (byte)((Character.digit(hex.charAt(j), 16) << 4)
                                  +Character.digit(hex.charAt(j+1), 16));
             ByteBuffer buf = ByteBuffer.wrap(parent);
-            String pid = String.valueOf(Math.abs(buf.getLong()));
+            String pid = String.valueOf(buf.getLong());
             /*if (pid == 0)
               g.root = n;
             else {
@@ -183,7 +171,31 @@ public class Reconstruct {
       }
     }
     for(Map.Entry<String, ArrayList<String>> entry : adjList.entrySet()) {
-      ArrayList<Node> from = nodes.get(entry.getKey());
+      ArrayList<Node> from = nodes.get(String.valueOf(Math.abs(Long.parseLong(entry.getKey()))));
+      if (from == null) {
+        long key = Long.parseLong(entry.getKey());
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(b);
+        out.writeLong(key);
+        byte[] rep = b.toByteArray();
+        String hex = "";
+        for(int i = 0; i < rep.length; i++) {
+          String fb = "";
+          int rm = (256 + rep[i]) % 16;
+          if (rm >= 10)
+            fb = (char)('A' + rm - 10) + fb;
+          else
+            fb = (char)('0' + rm) + fb;
+          rm = ((256 + rep[i]) / 16) % 16;
+          if (rm >= 10)
+            fb = (char)('A' + rm - 10) + fb;
+          else
+            fb = (char)('0' + rm) + fb;
+          hex += fb;
+        }
+        System.out.println("Nonexistent parent: " + hex);
+        System.exit(1);
+      }
       if (from.size() <= 0)
         continue;
       for (String s : entry.getValue()) {
@@ -193,10 +205,12 @@ public class Reconstruct {
       }
     }
     if (idList.size() != 1) {
-      System.out.println("Too many ids");
-      for (String s : idList)
-        System.out.println(s);
-      throw new IOException("Invalid graph");
+      if (idList.size() > 1) {
+        System.out.println("Too many ids");
+        for (String s : idList)
+          System.out.println(s);
+      }
+      System.exit(1);
     }
     g.root = nodes.get(idList.iterator().next()).get(0);
     calculateTotalTime(g);
@@ -265,7 +279,7 @@ public class Reconstruct {
     if (visited.contains(n))
       return;
     visited.add(n);
-    out.println(n.id + " [label=\"" + n.hostname.toUpperCase() + "_" + n.label + "\"]");//"\\nDEFAULT\"]");
+    out.println(n.id + " [label=\"" + n.label + "\"]");//"\\nDEFAULT\"]");
     for(Edge e : n.children)
       printNodes(g, g.nodes.get(e.to), visited, out);
   }

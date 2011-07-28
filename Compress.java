@@ -6,8 +6,8 @@ import java.text.*;
 
 public class Compress {
   public static long fileId = 0;
-  public static final Pattern nodeRegex = Pattern.compile("([0-9]+)\\.[0-9]+ \\[label=\"(.+)\"\\]");
-  public static final Pattern edgeRegex = Pattern.compile("([0-9]+)\\.[0-9]+ -> ([0-9]+)\\.[0-9]+ \\[label=\"R: (-?[0-9\\.]+) us\"\\]");
+  public static final Pattern nodeRegex = Pattern.compile("([0-9]+\\.[0-9]+) \\[label=\"(.+)\"\\]");
+  public static final Pattern edgeRegex = Pattern.compile("([0-9]+\\.[0-9]+) -> ([0-9]+\\.[0-9]+) \\[label=\"R: (-?[0-9\\.]+) us\"\\]");
   public static DecimalFormat df = new DecimalFormat("#.###");
   public static void main(String args[]) throws IOException {
     if (args.length < 2) {
@@ -52,7 +52,7 @@ public class Compress {
     String line = sc.nextLine();
     Matcher m;
     if ((line.indexOf("NEW_BLOCK") != -1 || line.indexOf("APPEND_BLOCK") != -1) && (m = nodeRegex.matcher(line)).matches()) {
-      Graph g = new Graph(Long.parseLong(m.group(1)), m.group(2));
+      Graph g = new Graph(m.group(1), m.group(2));
       FrequencyGraph fg = new FrequencyGraph(m.group(2), g.root);
       line = sc.nextLine();
       while(line.indexOf("}") == -1) {
@@ -62,18 +62,18 @@ public class Compress {
             System.out.println("Doesn't match: " + line);
             System.exit(-5);
           }
-          g.addNode(Long.parseLong(m.group(1)), m.group(2));
+          g.addNode(m.group(1), m.group(2));
         } else {
           m = edgeRegex.matcher(line);
           if (!m.matches()) {
             System.out.println("Doesn't match: " + line);
             System.exit(-6);
           }
-          g.addEdge(Long.parseLong(m.group(1)), Long.parseLong(m.group(2)), Double.parseDouble(m.group(3)));
+          g.addEdge(m.group(1), m.group(2), Double.parseDouble(m.group(3)));
         }
         line = sc.nextLine();
       }
-      fillFrequencyGraph(g, g.root, fg, new HashSet<Long>());
+      fillFrequencyGraph(g, g.root, fg, new HashSet<String>());
       printFrequencyGraphNodes(out, fg, fg.root, new HashSet<String>());
       printFrequencyGraphEdges(out, fg, fg.root, new HashSet<String>(), outputDir);
       out.println("}");
@@ -84,26 +84,27 @@ public class Compress {
         out.println(line);
         line = sc.nextLine();
       }
+      out.println(line);
     }
   }
   
   public static class Graph {
-    long root;
-    HashMap<Long, String> name;
-    HashMap<Long, ArrayList<Edge>> adjacencyList;
-    public Graph(long root, String rootName) {
+    String root;
+    HashMap<String, String> name;
+    HashMap<String, ArrayList<Edge>> adjacencyList;
+    public Graph(String root, String rootName) {
       this.root = root;
-      name = new HashMap<Long, String>();
+      name = new HashMap<String, String>();
       name.put(root, rootName);
-      adjacencyList = new HashMap<Long, ArrayList<Edge>>();
+      adjacencyList = new HashMap<String, ArrayList<Edge>>();
       adjacencyList.put(root, new ArrayList<Edge>());
     }
 
-    public void addNode(long id, String name) {
+    public void addNode(String id, String name) {
       this.name.put(id, name);
       adjacencyList.put(id, new ArrayList<Edge>());
     }
-    public void addEdge(long id, long id2, double latency) {
+    public void addEdge(String id, String id2, double latency) {
       if (!adjacencyList.containsKey(id))
         adjacencyList.put(id, new ArrayList<Edge>());
       adjacencyList.get(id).add(new Edge(id2, latency));
@@ -113,15 +114,15 @@ public class Compress {
   public static class FrequencyGraph {
     String root;
     HashMap<String, HashMap<String, ArrayList<Double>>> adjacencyList;
-    HashMap<String, Long> ids;
-    public FrequencyGraph(String root, long id) {
+    HashMap<String, String> ids;
+    public FrequencyGraph(String root, String id) {
       this.root = root;
       adjacencyList = new HashMap<String, HashMap<String, ArrayList<Double>>>();
       adjacencyList.put(root, new HashMap<String, ArrayList<Double>>());
-      ids = new HashMap<String, Long>();
+      ids = new HashMap<String, String>();
       ids.put(root, id);
     }
-    public void addNode(String node, long id) {
+    public void addNode(String node, String id) {
       if (!ids.containsKey(node)) {
         ids.put(node, id);
         adjacencyList.put(node, new HashMap<String, ArrayList<Double>>());
@@ -137,15 +138,15 @@ public class Compress {
   }
 
   public static class Edge {
-     long id;
+     String id;
      double latency;
-     public Edge(long id, double latency) {
+     public Edge(String id, double latency) {
        this.id = id;
        this.latency = latency;
      }
   }
 
-  public static void fillFrequencyGraph (Graph g, long node, FrequencyGraph fg, HashSet<Long> visited) {
+  public static void fillFrequencyGraph (Graph g, String node, FrequencyGraph fg, HashSet<String> visited) {
     if (visited.contains(node))
       return;
     visited.add(node);
@@ -161,7 +162,7 @@ public class Compress {
     if (visited.contains(node))
       return;
     visited.add(node);
-    out.println(fg.ids.get(node) + "." + fg.ids.get(node) + " [label=\"" + node + "\"]");
+    out.println(fg.ids.get(node) + " [label=\"" + node + "\"]");
     for (Map.Entry<String, ArrayList<Double>> entry : fg.adjacencyList.get(node).entrySet()) {
        printFrequencyGraphNodes(out, fg, entry.getKey(), visited);
     }
@@ -173,7 +174,7 @@ public class Compress {
     visited.add(node);
     for (Map.Entry<String, ArrayList<Double>> entry : fg.adjacencyList.get(node).entrySet()) {
       if (entry.getValue().size() == 1) {
-        out.println(fg.ids.get(node) + "." + fg.ids.get(node) + " -> " + fg.ids.get(entry.getKey()) + "." + fg.ids.get(entry.getKey()) + " [label=\"R: " + df.format(entry.getValue().get(0)) + " us\"]");
+        out.println(fg.ids.get(node) + " -> " + fg.ids.get(entry.getKey()) + " [label=\"R: " + df.format(entry.getValue().get(0)) + " us\"]");
       } else {
         ArrayList<Double> latencies = entry.getValue();
         String fileName = fileId++ + ".dat";
@@ -181,7 +182,7 @@ public class Compress {
         for(int i = 0; i < latencies.size(); i++)
           datOut.println(df.format(latencies.get(i)) + " us");
         datOut.close();
-        out.println(fg.ids.get(node) + "." + fg.ids.get(node) + " -> " + fg.ids.get(entry.getKey()) + "." + fg.ids.get(entry.getKey()) + " [label=\"F: " + fileName + "\"]");
+        out.println(fg.ids.get(node) + " -> " + fg.ids.get(entry.getKey()) + " [label=\"F: " + fileName + "\"]");
       }
       printFrequencyGraphEdges(out, fg, entry.getKey(), visited, outputDir);
     }

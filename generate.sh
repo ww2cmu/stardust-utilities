@@ -7,6 +7,7 @@ then
   z=0
   for f in ${l}
   do
+    printf "${f}\n"
     cat ${f} | java Reconstruct ${x} 
     if [ $? -eq 1 ]
     then
